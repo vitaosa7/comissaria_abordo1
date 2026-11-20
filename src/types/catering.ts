@@ -61,3 +61,9 @@ export interface AdminUser {
   addedBy?: string;
   createdAt: string;
 }
+
+export interface AuthErrorDetails {
+  code?: string;
+  message: string;
+  unauthorizedDomain?: string;
+}

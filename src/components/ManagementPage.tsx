@@ -2,8 +2,11 @@ import { User } from 'firebase/auth';
 import {
   ArrowLeft,
   BarChart3,
+  Check,
   ClipboardList,
+  Copy,
   Download,
+  ExternalLink,
   Loader2,
   Lock,
   LogIn,
@@ -25,9 +28,11 @@ import {
   formatCurrency,
   formatPhoneDisplay,
 } from '../data/defaultMenu';
+import { FIREBASE_PROJECT_ID } from '../firebase';
 import {
   AdminRole,
   AdminUser,
+  AuthErrorDetails,
   CurrentAdminRole,
   HangarSettings,
   MenuItem,
@@ -47,8 +52,9 @@ interface ManagementPageProps {
   adminRole: CurrentAdminRole;
   admins: AdminUser[];
   authLoading: boolean;
-  authError: string | null;
+  authError: AuthErrorDetails | null;
   onLogin: () => void;
+  onLoginWithRedirect?: () => void;
   onLogout: () => void;
   onSwitchAccount: () => void;
   orders: WhatsAppOrder[];
@@ -93,6 +99,7 @@ export function ManagementPage({
   authLoading,
   authError,
   onLogin,
+  onLoginWithRedirect,
   onLogout,
   onSwitchAccount,
   orders,
@@ -113,6 +120,20 @@ export function ManagementPage({
   const [section, setSection] = useState<ManagementSection>('orders');
   const [statusFilter, setStatusFilter] = useState<'Todos' | OrderStatus>('Todos');
   const [orderSearch, setOrderSearch] = useState('');
+  const [copiedDomain, setCopiedDomain] = useState(false);
+
+  const isStandaloneWindow =
+    typeof window !== 'undefined' && window.self === window.top;
+
+  const handleCopyDomain = async (domain: string) => {
+    try {
+      await navigator.clipboard.writeText(domain);
+      setCopiedDomain(true);
+      setTimeout(() => setCopiedDomain(false), 2000);
+    } catch {
+      // Ignore clipboard failures on restricted contexts
+    }
+  };
 
   // 1. Auth Loading Gate
   if (!authReady) {
@@ -172,29 +193,99 @@ export function ManagementPage({
           </div>
 
           {authError && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-medium text-rose-700">
-              {authError}
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 space-y-2.5">
+              <p className="font-semibold leading-relaxed">{authError.message}</p>
+
+              {authError.code === 'auth/unauthorized-domain' &&
+                authError.unauthorizedDomain && (
+                  <div className="bg-white border border-rose-200/80 rounded-lg p-3 space-y-2 text-slate-700">
+                    <p className="text-[11px] font-semibold text-[#0B1320]">
+                      Como liberar este domínio da Vercel em 1 minuto:
+                    </p>
+                    <ol className="text-[11px] space-y-1 list-decimal list-inside text-slate-600">
+                      <li>Copie o domínio abaixo.</li>
+                      <li>
+                        Abra o Firebase Console em{' '}
+                        <strong>
+                          Authentication → Configurações → Domínios autorizados
+                        </strong>
+                        .
+                      </li>
+                      <li>
+                        Clique em <strong>Adicionar domínio</strong>, cole e salve.
+                      </li>
+                    </ol>
+
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <code className="flex-1 min-w-0 truncate px-2.5 py-1.5 bg-slate-100 rounded-md text-[11px] font-mono text-[#0B1320]">
+                        {authError.unauthorizedDomain}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleCopyDomain(authError.unauthorizedDomain!)
+                        }
+                        className="min-h-[32px] px-2.5 py-1 bg-[#0B1320] text-white text-[11px] font-semibold rounded-md flex items-center gap-1 shrink-0 cursor-pointer"
+                      >
+                        {copiedDomain ? (
+                          <>
+                            <Check className="w-3 h-3 text-[#C9A256]" />
+                            <span>Copiado</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copiar</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <a
+                      href={`https://console.firebase.google.com/project/${FIREBASE_PROJECT_ID}/authentication/settings`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full min-h-[36px] px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-[11px] font-semibold rounded-lg transition flex items-center justify-center gap-1.5"
+                    >
+                      <span>Abrir Domínios Autorizados no Firebase</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                )}
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={onLogin}
-            disabled={authLoading}
-            className="w-full py-3 px-4 bg-[#0B1320] hover:bg-[#162238] disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
-          >
-            {authLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin text-[#C9A256]" />
-            ) : (
-              <LogIn className="w-4 h-4 text-[#C9A256]" />
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={onLogin}
+              disabled={authLoading}
+              className="w-full min-h-[46px] py-3 px-4 bg-[#0B1320] hover:bg-[#162238] disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {authLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-[#C9A256]" />
+              ) : (
+                <LogIn className="w-4 h-4 text-[#C9A256]" />
+              )}
+              <span>{authLoading ? 'Conectando...' : 'Entrar com Google'}</span>
+            </button>
+
+            {isStandaloneWindow && onLoginWithRedirect && (
+              <button
+                type="button"
+                onClick={onLoginWithRedirect}
+                disabled={authLoading}
+                className="w-full min-h-[40px] py-2 px-3 bg-slate-100 hover:bg-slate-200 disabled:opacity-60 text-[#0B1320] text-xs font-semibold rounded-xl transition cursor-pointer"
+              >
+                Usar login por redirecionamento (alternativa celular)
+              </button>
             )}
-            <span>{authLoading ? 'Conectando...' : 'Entrar com Google'}</span>
-          </button>
+          </div>
 
           <button
             type="button"
             onClick={onBackToStorefront}
-            className="w-full py-2 text-xs font-semibold text-slate-600 hover:text-[#0B1320] flex items-center justify-center gap-1.5 cursor-pointer"
+            className="w-full min-h-[40px] py-2 text-xs font-semibold text-slate-600 hover:text-[#0B1320] flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Voltar para o Cardápio Público</span>

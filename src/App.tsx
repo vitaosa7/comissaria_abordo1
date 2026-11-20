@@ -1,4 +1,11 @@
-import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
+import {
+  getRedirectResult,
+  onAuthStateChanged,
+  signInWithPopup,
+  signInWithRedirect,
+  signOut,
+  User,
+} from 'firebase/auth';
 import {
   collection,
   deleteDoc,
@@ -50,6 +57,7 @@ import {
 import {
   AdminRole,
   AdminUser,
+  AuthErrorDetails,
   CartItem,
   CurrentAdminRole,
   HangarSettings,
@@ -93,6 +101,55 @@ function toIsoDate(value: unknown): string {
   return new Date().toISOString();
 }
 
+function mapFirebaseAuthError(err: unknown): AuthErrorDetails | null {
+  const code =
+    typeof err === 'object' && err !== null && 'code' in err
+      ? String((err as { code?: unknown }).code || '')
+      : '';
+  const msg = err instanceof Error ? err.message : '';
+
+  if (
+    code === 'auth/popup-closed-by-user' ||
+    code === 'auth/cancelled-popup-request' ||
+    msg.includes('popup-closed-by-user')
+  ) {
+    return null;
+  }
+
+  if (
+    code === 'auth/unauthorized-domain' ||
+    msg.includes('unauthorized-domain')
+  ) {
+    return {
+      code: 'auth/unauthorized-domain',
+      unauthorizedDomain: window.location.hostname,
+      message: `O domínio "${window.location.hostname}" ainda não foi autorizado no Firebase Authentication.`,
+    };
+  }
+
+  if (code === 'auth/popup-blocked' || msg.includes('popup-blocked')) {
+    return {
+      code: 'auth/popup-blocked',
+      message:
+        'O navegador bloqueou a janela do Google. Permita pop-ups ou use a opção de redirecionamento abaixo.',
+    };
+  }
+
+  if (code === 'auth/network-request-failed') {
+    return {
+      code,
+      message:
+        'Falha de conexão com a internet. Verifique sua rede e tente novamente.',
+    };
+  }
+
+  return {
+    code: code || undefined,
+    message:
+      'Não foi possível concluir o login com Google. Se estiver usando o navegador interno do WhatsApp/Instagram, abra o link no Chrome ou Safari.',
+  };
+}
+
 export default function App() {
   const [isManagementPage, setIsManagementPage] = useState<boolean>(() =>
     isManagementRoute()
@@ -119,7 +176,7 @@ export default function App() {
   const [adminRole, setAdminRole] = useState<CurrentAdminRole>(null);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [authLoading, setAuthLoading] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<AuthErrorDetails | null>(null);
 
   // Catalog & settings (synced live from Firestore, defaulting seamlessly)
   const [menuItems, setMenuItems] = useState<MenuItem[]>(DEFAULT_MENU);
@@ -185,6 +242,16 @@ export default function App() {
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('hashchange', handlePopState);
     };
+  }, []);
+
+  // Handle Google redirect result when returning from signInWithRedirect (Vercel / mobile)
+  useEffect(() => {
+    getRedirectResult(auth).catch((err) => {
+      const mapped = mapFirebaseAuthError(err);
+      if (mapped) {
+        setAuthError(mapped);
+      }
+    });
   }, []);
 
   // Auth listener & email-keyed manager role resolution
@@ -497,13 +564,42 @@ export default function App() {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '';
-      if (!msg.includes('popup-closed-by-user')) {
-        setAuthError(
-          'Não foi possível concluir o login com Google. Tente novamente.'
-        );
+      const code =
+        typeof err === 'object' && err !== null && 'code' in err
+          ? String((err as { code?: unknown }).code || '')
+          : '';
+      const isTopLevelWindow =
+        typeof window !== 'undefined' && window.self === window.top;
+
+      if (
+        isTopLevelWindow &&
+        (code === 'auth/popup-blocked' ||
+          code === 'auth/operation-not-supported-in-this-environment')
+      ) {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (redirectErr) {
+          const mapped = mapFirebaseAuthError(redirectErr);
+          if (mapped) setAuthError(mapped);
+        }
+      } else {
+        const mapped = mapFirebaseAuthError(err);
+        if (mapped) setAuthError(mapped);
       }
     } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleManagerRedirectLogin = async () => {
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      await signInWithRedirect(auth, googleProvider);
+    } catch (err) {
+      const mapped = mapFirebaseAuthError(err);
+      if (mapped) setAuthError(mapped);
       setAuthLoading(false);
     }
   };
@@ -841,6 +937,7 @@ export default function App() {
           authLoading={authLoading}
           authError={authError}
           onLogin={handleManagerLogin}
+          onLoginWithRedirect={handleManagerRedirectLogin}
           onLogout={handleManagerLogout}
           onSwitchAccount={handleSwitchAccount}
           orders={managerOrders}
