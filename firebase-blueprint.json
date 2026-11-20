@@ -1,0 +1,110 @@
+{
+  "entities": {
+    "MenuItem": {
+      "title": "MenuItem",
+      "description": "Item do cardápio de comissaria executiva para pedidos a bordo.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "price": { "type": "number" },
+        "category": {
+          "type": "string",
+          "enum": ["Salgados", "Lanches", "Bebidas", "Refeições", "Sobremesas"]
+        },
+        "portion": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "desc": { "type": "string", "maxLength": 300 },
+        "iconKey": {
+          "type": "string",
+          "enum": ["pastry", "sandwich", "beverage", "coffee", "water", "meal", "dessert"]
+        },
+        "imageUrl": { "type": "string", "maxLength": 200000 },
+        "available": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "price", "category", "portion", "desc", "iconKey", "available"]
+    },
+    "StorefrontSettings": {
+      "title": "StorefrontSettings",
+      "description": "Configurações públicas da comissaria (nome, WhatsApp de destino, saudação e antecedência).",
+      "type": "object",
+      "properties": {
+        "hangarName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "whatsappNumber": { "type": "string", "minLength": 10, "maxLength": 20, "pattern": "^[0-9]+$" },
+        "greetingText": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "deliveryLeadMinutes": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["hangarName", "whatsappNumber", "greetingText", "deliveryLeadMinutes"]
+    },
+    "WhatsAppOrder": {
+      "title": "WhatsAppOrder",
+      "description": "Pedido de serviço de bordo enviado pelo cardápio público.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "minLength": 2, "maxLength": 32 },
+        "aircraftTail": { "type": "string", "minLength": 2, "maxLength": 24 },
+        "requesterName": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "deliveryTime": { "type": "string", "minLength": 4, "maxLength": 20 },
+        "hangarLocation": { "type": "string", "maxLength": 120 },
+        "notes": { "type": "string", "maxLength": 500 },
+        "paymentMethod": {
+          "type": "string",
+          "enum": ["Faturar na Aeronave", "PIX", "Cartão na Entrega"]
+        },
+        "items": { "type": "array" },
+        "total": { "type": "number" },
+        "status": {
+          "type": "string",
+          "enum": ["Enviado no WhatsApp", "Em Preparo", "Entregue na Aeronave"]
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "code",
+        "aircraftTail",
+        "requesterName",
+        "deliveryTime",
+        "hangarLocation",
+        "notes",
+        "paymentMethod",
+        "items",
+        "total",
+        "status",
+        "createdAt"
+      ]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Registro de administrador autorizado por e-mail Google a acessar a área de gerência.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "role": { "type": "string", "enum": ["admin", "manager"] },
+        "addedBy": { "type": "string", "maxLength": 160 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "role", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/menuItems/{itemId}": {
+      "schema": { "$ref": "#/entities/MenuItem" },
+      "description": "Itens do cardápio público com escrita restrita aos administradores autenticados."
+    },
+    "/publicSettings/{settingId}": {
+      "schema": { "$ref": "#/entities/StorefrontSettings" },
+      "description": "Parâmetros públicos do ponto de atendimento (WhatsApp e nome do hangar) editáveis apenas por administradores."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/WhatsAppOrder" },
+      "description": "Pedidos criados pelos clientes na vitrine pública; leitura, alteração de status e exclusão restritas aos administradores."
+    },
+    "/admins/{emailId}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Lista de administradores autorizados indexada pelo e-mail Google em minúsculas."
+    }
+  }
+}

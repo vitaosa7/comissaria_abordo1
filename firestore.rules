@@ -1,0 +1,198 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: default deny everything
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidEmailId(emailId) {
+      return emailId is string &&
+        emailId.size() >= 3 &&
+        emailId.size() <= 160 &&
+        emailId.matches('^[a-z0-9._%+\\-]+@[a-z0-9.\\-]+\\.[a-z]{2,}$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function userEmailLower() {
+      return request.auth.token.email.lower();
+    }
+
+    function isPrimaryAdmin() {
+      return isVerifiedUser() &&
+        request.auth.token.email is string &&
+        userEmailLower() == 'vitaosa7@gmail.com';
+    }
+
+    function isAdmin() {
+      return isPrimaryAdmin() || (
+        isVerifiedUser() &&
+        request.auth.token.email is string &&
+        exists(/databases/$(database)/documents/admins/$(userEmailLower()))
+      );
+    }
+
+    function isFullAdmin() {
+      return isPrimaryAdmin() || (
+        isVerifiedUser() &&
+        request.auth.token.email is string &&
+        exists(/databases/$(database)/documents/admins/$(userEmailLower())) &&
+        get(/databases/$(database)/documents/admins/$(userEmailLower())).data.role == 'admin'
+      );
+    }
+
+    // Validation Blueprints
+    function isValidMenuItem(data) {
+      return data.keys().hasAll(['name', 'price', 'category', 'portion', 'desc', 'iconKey', 'available']) &&
+        data.keys().hasOnly(['name', 'price', 'category', 'portion', 'desc', 'iconKey', 'imageUrl', 'available', 'updatedAt']) &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 120 &&
+        data.price is number && data.price >= 0 && data.price <= 100000 &&
+        data.category in ['Salgados', 'Lanches', 'Bebidas', 'Refeições', 'Sobremesas'] &&
+        data.portion is string && data.portion.size() >= 1 && data.portion.size() <= 60 &&
+        data.desc is string && data.desc.size() <= 300 &&
+        data.iconKey in ['pastry', 'sandwich', 'beverage', 'coffee', 'water', 'meal', 'dessert'] &&
+        (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 200000)) &&
+        data.available is bool &&
+        (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidStorefrontSettings(data) {
+      return data.keys().hasAll(['hangarName', 'whatsappNumber', 'greetingText', 'deliveryLeadMinutes']) &&
+        data.keys().hasOnly(['hangarName', 'whatsappNumber', 'greetingText', 'deliveryLeadMinutes', 'updatedAt']) &&
+        data.hangarName is string && data.hangarName.size() >= 2 && data.hangarName.size() <= 120 &&
+        data.whatsappNumber is string && data.whatsappNumber.size() >= 10 && data.whatsappNumber.size() <= 20 &&
+        data.whatsappNumber.matches('^[0-9]+$') &&
+        data.greetingText is string && data.greetingText.size() >= 2 && data.greetingText.size() <= 140 &&
+        data.deliveryLeadMinutes is number && data.deliveryLeadMinutes >= 5 && data.deliveryLeadMinutes <= 1440 &&
+        (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll([
+          'code', 'aircraftTail', 'requesterName', 'deliveryTime',
+          'hangarLocation', 'notes', 'paymentMethod', 'items', 'total', 'status', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'code', 'aircraftTail', 'requesterName', 'deliveryTime',
+          'hangarLocation', 'notes', 'paymentMethod', 'items', 'total', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.code is string && data.code.size() >= 2 && data.code.size() <= 32 &&
+        data.aircraftTail is string && data.aircraftTail.size() >= 2 && data.aircraftTail.size() <= 24 &&
+        data.requesterName is string && data.requesterName.size() >= 2 && data.requesterName.size() <= 100 &&
+        data.deliveryTime is string && data.deliveryTime.size() >= 4 && data.deliveryTime.size() <= 20 &&
+        data.hangarLocation is string && data.hangarLocation.size() <= 120 &&
+        data.notes is string && data.notes.size() <= 500 &&
+        data.paymentMethod in ['Faturar na Aeronave', 'PIX', 'Cartão na Entrega'] &&
+        data.items is list && data.items.size() >= 1 && data.items.size() <= 50 && data.items[0] is map &&
+        data.total is number && data.total >= 0 && data.total <= 1000000 &&
+        data.status in ['Enviado no WhatsApp', 'Em Preparo', 'Entregue na Aeronave'] &&
+        data.createdAt is timestamp &&
+        (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidAdminUser(data, emailId) {
+      return data.keys().hasAll(['email', 'role', 'createdAt']) &&
+        data.keys().hasOnly(['email', 'displayName', 'role', 'addedBy', 'createdAt', 'updatedAt']) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.email.lower() == emailId &&
+        (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 120)) &&
+        (!('addedBy' in data) || (data.addedBy is string && data.addedBy.size() <= 160)) &&
+        data.role in ['admin', 'manager'] &&
+        data.createdAt is timestamp &&
+        (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    // Public catalog (no PII): anyone can browse; authorized admins/managers can modify
+    match /menuItems/{itemId} {
+      allow get: if isValidId(itemId);
+      allow list: if true;
+      allow create: if isAdmin() && isValidId(itemId) && isValidMenuItem(incoming()) &&
+        (!('updatedAt' in incoming()) || incoming().updatedAt == request.time);
+      allow update: if isAdmin() && isValidId(itemId) && isValidMenuItem(incoming()) &&
+        (!('updatedAt' in incoming()) || incoming().updatedAt == request.time) &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'price', 'category', 'portion', 'desc', 'iconKey', 'imageUrl', 'available', 'updatedAt'
+        ]);
+      allow delete: if isAdmin() && isValidId(itemId);
+    }
+
+    // Public storefront settings (WhatsApp number & hangar name): anyone can read; admins/managers can modify
+    match /publicSettings/{settingId} {
+      allow get: if isValidId(settingId);
+      allow list: if false;
+      allow create: if isAdmin() && isValidId(settingId) && isValidStorefrontSettings(incoming()) &&
+        (!('updatedAt' in incoming()) || incoming().updatedAt == request.time);
+      allow update: if isAdmin() && isValidId(settingId) && isValidStorefrontSettings(incoming()) &&
+        (!('updatedAt' in incoming()) || incoming().updatedAt == request.time) &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'hangarName', 'whatsappNumber', 'greetingText', 'deliveryLeadMinutes', 'updatedAt'
+        ]);
+      allow delete: if false;
+    }
+
+    // Customer orders:
+    // Public storefront can create validated orders with initial status only;
+    // Reading, listing, status updates, and deletion are strictly restricted to verified admins/managers.
+    match /orders/{orderId} {
+      allow get: if isAdmin() && isValidId(orderId);
+      allow list: if isAdmin();
+      allow create: if isValidId(orderId) &&
+        isValidOrder(incoming()) &&
+        incoming().status == 'Enviado no WhatsApp' &&
+        incoming().createdAt == request.time &&
+        !('updatedAt' in incoming());
+      allow update: if isAdmin() && isValidId(orderId) &&
+        isValidOrder(incoming()) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(orderId);
+    }
+
+    // Authorized admins & managers registry (keyed by lowercase email)
+    match /admins/{emailId} {
+      allow get: if isVerifiedUser() &&
+        isValidEmailId(emailId) &&
+        ((request.auth.token.email is string && userEmailLower() == emailId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isFullAdmin() &&
+        isValidEmailId(emailId) &&
+        emailId != 'vitaosa7@gmail.com' &&
+        isValidAdminUser(incoming(), emailId) &&
+        incoming().createdAt == request.time &&
+        !('updatedAt' in incoming());
+      allow update: if isFullAdmin() &&
+        isValidEmailId(emailId) &&
+        emailId != 'vitaosa7@gmail.com' &&
+        isValidAdminUser(incoming(), emailId) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().email == existing().email &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['role', 'displayName', 'updatedAt']);
+      allow delete: if isFullAdmin() &&
+        isValidEmailId(emailId) &&
+        emailId != 'vitaosa7@gmail.com' &&
+        userEmailLower() != emailId;
+    }
+  }
+}

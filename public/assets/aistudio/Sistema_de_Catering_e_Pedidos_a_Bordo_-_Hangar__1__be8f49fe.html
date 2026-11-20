@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serviços de Bordo & Catering - Hangar</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fonte Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-slate-800 selection:text-white">
+
+    <!-- Notificação Toast Customizada (Substitui alert()) -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Modal de Confirmação Customizado (Substitui confirm()) -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+            <h3 id="confirm-title" class="text-lg font-semibold text-slate-900 mb-2">Confirmar Ação</h3>
+            <p id="confirm-message" class="text-sm text-slate-600 mb-6">Tem certeza que deseja prosseguir?</p>
+            <div class="flex justify-end gap-3">
+                <button id="confirm-cancel-btn" class="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition">Cancelar</button>
+                <button id="confirm-ok-btn" class="px-4 py-2 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TELA DE AUTENTICAÇÃO / LOGIN -->
+    <div id="auth-screen" class="flex-1 flex items-center justify-center p-4 bg-gradient-to-br from-slate-100 via-slate-50 to-slate-200">
+        <div class="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-200/80 p-8">
+            <!-- Cabeçalho textual limpo (SEM LOGOTIPO) -->
+            <div class="text-center mb-8">
+                <span class="inline-block px-3 py-1 bg-slate-100 text-slate-600 text-xs font-semibold uppercase tracking-widest rounded-full mb-3">
+                    Operações de Pátio & Hangar
+                </span>
+                <h1 class="text-2xl font-bold tracking-tight text-slate-900">
+                    Serviços de Bordo
+                </h1>
+                <p class="text-sm text-slate-500 mt-1">
+                    Portal de Comissaria e Atendimento Executivo
+                </p>
+            </div>
+
+            <!-- Acesso Rápido (Modo Demonstração / Teste Imediato) -->
+            <div class="mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-200/70">
+                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 text-center">
+                    Acesso Rápido (Modo Demonstração)
+                </p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" onclick="loginDemo('client')" class="flex flex-col items-center justify-center p-3 bg-white hover:bg-slate-900 hover:text-white text-slate-800 border border-slate-200 rounded-xl transition shadow-sm group">
+                        <span class="text-sm font-semibold">Tripulação / Cliente</span>
+                        <span class="text-[11px] text-slate-500 group-hover:text-slate-300 mt-0.5">Fazer Pedidos</span>
+                    </button>
+                    <button type="button" onclick="loginDemo('master')" class="flex flex-col items-center justify-center p-3 bg-white hover:bg-slate-900 hover:text-white text-slate-800 border border-slate-200 rounded-xl transition shadow-sm group">
+                        <span class="text-sm font-semibold">Administração</span>
+                        <span class="text-[11px] text-slate-500 group-hover:text-slate-300 mt-0.5">Usuário Master</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="relative flex py-3 items-center mb-5">
+                <div class="flex-grow border-t border-slate-200"></div>
+                <span class="flex-shrink mx-4 text-xs text-slate-400 uppercase font-medium">Ou entre com sua conta</span>
+                <div class="flex-grow border-t border-slate-200"></div>
+            </div>
+
+            <!-- Abas Login / Cadastro -->
+            <div class="flex bg-slate-100 p-1 rounded-xl mb-5">
+                <button type="button" id="tab-login" onclick="switchAuthTab('login')" class="flex-1 py-2 text-sm font-medium rounded-lg bg-white text-slate-900 shadow-sm transition">
+                    Entrar
+                </button>
+                <button type="button" id="tab-register" onclick="switchAuthTab('register')" class="flex-1 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 transition">
+                    Criar Conta
+                </button>
+            </div>
+
+            <!-- Formulário de Autenticação -->
+            <form id="auth-form" class="space-y-4">
+                <div id="register-name-group" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Nome / Comandante / Empresa</label>
+                    <input type="text" id="auth-name" placeholder="Ex: Cmte. Carlos Silva" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">E-mail Corporativo</label>
+                    <input type="email" id="auth-email" required placeholder="nome@aviacao.com.br" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Senha</label>
+                    <input type="password" id="auth-password" required placeholder="••••••••" minlength="6" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
+                </div>
+
+                <div id="register-role-group" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Perfil de Acesso</label>
+                    <select id="auth-role" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
+                        <option value="client">Cliente (Tripulação / Passageiro)</option>
+                        <option value="master">Administração (Usuário Master)</option>
+                    </select>
+                </div>
+
+                <button type="submit" id="auth-submit-btn" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2">
+                    <span>Acessar Sistema</span>
+                </button>
+            </form>
+
+            <p id="connection-status" class="text-[11px] text-center text-slate-400 mt-6">
+                Verificando conexão segura...
+            </p>
+        </div>
+    </div>
+
+    <!-- APLICAÇÃO PRINCIPAL (OCULTA ATÉ O LOGIN) -->
+    <div id="main-app" class="hidden flex-1 flex flex-col">
+        <!-- Barra Superior Limpa (SEM LOGOTIPO) -->
+        <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div>
+                        <h1 class="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-none">
+                            Comissaria & Serviços de Bordo
+                        </h1>
+                        <p class="text-xs text-slate-500 mt-0.5" id="header-subtitle">
+                            Atendimento Exclusivo em Pernoite
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 sm:gap-4">
+                    <div class="hidden sm:flex flex-col text-right">
+                        <span id="user-display-name" class="text-sm font-semibold text-slate-800">Usuário</span>
+                        <span id="user-role-badge" class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 inline-block w-fit ml-auto">
+                            Perfil
+                        </span>
+                    </div>
+                    <button onclick="logoutUser()" class="px-3.5 py-2 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition flex items-center gap-1.5">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                        <span>Sair</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- ========================================== -->
+        <!-- VISÃO 1: ÁREA DO CLIENTE (TRIPULAÇÃO)      -->
+        <!-- ========================================== -->
+        <main id="client-view" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            
+            <!-- Navegação Interna do Cliente -->
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <div class="flex bg-slate-200/70 p-1 rounded-xl">
+                    <button id="btn-client-catalog" onclick="switchClientTab('catalog')" class="px-4 py-2 text-sm font-semibold rounded-lg bg-white text-slate-900 shadow-sm transition">
+                        Cardápio de Bordo
+                    </button>
+                    <button id="btn-client-orders" onclick="switchClientTab('orders')" class="px-4 py-2 text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition flex items-center gap-2">
+                        <span>Meus Pedidos</span>
+                        <span id="client-active-orders-count" class="px-2 py-0.5 text-xs bg-slate-900 text-white rounded-full">0</span>
+                    </button>
+                </div>
+
+                <!-- Botão Mobile para ver Carrinho -->
+                <button onclick="scrollToCart()" class="lg:hidden px-4 py-2 bg-slate-900 text-white text-sm font-semibold rounded-xl shadow flex items-center gap-2">
+                    <i data-lucide="shopping-bag" class="w-4 h-4"></i>
+                    <span>Carrinho (<span id="mobile-cart-count">0</span>)</span>
+                </button>
+            </div>
+
+            <!-- ABA: CATÁLOGO + CARRINHO -->
+            <div id="client-tab-catalog" class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                
+                <!-- Coluna Esquerda: Itens do Cardápio -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900">Catálogo de Catering</h2>
+                            <p class="text-xs text-slate-500">Selecione os itens para entrega direta na aeronave em pernoite.</p>
+                        </div>
+                        <!-- Filtro de Categoria -->
+                        <div class="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0" id="category-filters">
+                            <button onclick="filterCategory('Todos')" class="cat-btn active px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-white transition">Todos</button>
+                            <button onclick="filterCategory('Salgados')" class="cat-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Salgados</button>
+                            <button onclick="filterCategory('Lanches')" class="cat-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Lanches</button>
+                            <button onclick="filterCategory('Bebidas')" class="cat-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Bebidas</button>
+                        </div>
+                    </div>
+
+                    <!-- Grid de Produtos -->
+                    <div id="menu-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Preenchido via JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Coluna Direita: Resumo do Pedido / Carrinho -->
+                <div id="cart-section" class="bg-white rounded-3xl border border-slate-200/90 shadow-lg p-6 sticky top-24">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
+                        <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="clipboard-list" class="w-5 h-5 text-slate-700"></i>
+                            <span>Solicitação de Bordo</span>
+                        </h3>
+                        <span id="cart-items-badge" class="text-xs font-semibold px-2.5 py-1 bg-slate-100 text-slate-700 rounded-full">0 itens</span>
+                    </div>
+
+                    <!-- Dados da Aeronave e Horário -->
+                    <form id="checkout-form" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Prefixo Aeronave *</label>
+                                <input type="text" id="aircraft-tail" required placeholder="Ex: PT-XYZ" maxlength="10" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold uppercase focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
+                            </div>
+                            
+
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Observações / Posição no Pátio</label>
+                            <input type="text" id="order-notes" placeholder="Ex: Hangar 2, entregar ao comissário" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
+                        </div>
+
+                        <!-- Lista de Itens no Carrinho -->
+                        <div class="border-t border-b border-slate-100 py-4 my-4 max-h-64 overflow-y-auto space-y-3" id="cart-items-list">
+                            <p class="text-sm text-slate-400 text-center py-6">Seu carrinho está vazio.<br>Adicione itens do cardápio ao lado.</p>
+                        </div>
+
+                        <!-- Total -->
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-sm font-medium text-slate-600">Total Estimado</span>
+                            <span id="cart-total-price" class="text-xl font-bold text-slate-900">R$ 0,00</span>
+                        </div>
+
+                        <button type="submit" id="submit-order-btn" disabled class="w-full py-3.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2">
+                            <span>Confirmar Pedido a Bordo</span>
+                            <i data-lucide="send" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ABA: ACOMPANHAMENTO DE PEDIDOS DO CLIENTE -->
+            <div id="client-tab-orders" class="hidden space-y-6">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">Acompanhamento em Tempo Real</h2>
+                        <p class="text-xs text-slate-500">Status atualizado diretamente pela equipe de comissaria do hangar.</p>
+                    </div>
+                </div>
+
+                <div id="client-orders-list" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <!-- Preenchido via JS -->
+                </div>
+            </div>
+        </main>
+
+        <!-- ========================================== -->
+        <!-- VISÃO 2: PAINEL ADMINISTRAÇÃO (MASTER)     -->
+        <!-- ========================================== -->
+        <main id="master-view" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            
+            <!-- Métricas Rápidas -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                    <span class="text-xs font-semibold text-amber-600 uppercase tracking-wider">Pendentes</span>
+                    <p id="stat-pending" class="text-2xl font-bold text-slate-900 mt-1">0</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                    <span class="text-xs font-semibold text-blue-600 uppercase tracking-wider">Em Preparo</span>
+                    <p id="stat-preparing" class="text-2xl font-bold text-slate-900 mt-1">0</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                    <span class="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Entregues</span>
+                    <p id="stat-delivered" class="text-2xl font-bold text-slate-900 mt-1">0</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Faturamento Total</span>
+                    <p id="stat-revenue" class="text-2xl font-bold text-slate-900 mt-1">R$ 0,00</p>
+                </div>
+            </div>
+
+            <!-- Abas do Painel Master -->
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <div class="flex bg-slate-200/70 p-1 rounded-xl">
+                    <button id="btn-master-orders" onclick="switchMasterTab('orders')" class="px-4 py-2 text-sm font-semibold rounded-lg bg-white text-slate-900 shadow-sm transition">
+                        Gestão de Pedidos
+                    </button>
+                    <button id="btn-master-menu" onclick="switchMasterTab('menu')" class="px-4 py-2 text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition">
+                        Gerenciar Cardápio
+                    </button>
+                </div>
+
+                <!-- Filtro de Status dos Pedidos -->
+                <div id="master-order-filters" class="flex gap-1.5 overflow-x-auto">
+                    <button onclick="filterMasterOrders('Todos')" class="m-filter-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-white transition">Todos</button>
+                    <button onclick="filterMasterOrders('Pendente')" class="m-filter-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition">Pendentes</button>
+                    <button onclick="filterMasterOrders('Em Preparo')" class="m-filter-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition">Em Preparo</button>
+                    <button onclick="filterMasterOrders('Entregue na Aeronave')" class="m-filter-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition">Entregues</button>
+                </div>
+            </div>
+
+            <!-- ABA MASTER 1: PEDIDOS RECEBIDOS -->
+            <div id="master-tab-orders" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <!-- Preenchido via JS -->
+            </div>
+
+            <!-- ABA MASTER 2: GERENCIAMENTO DO CARDÁPIO -->
+            <div id="master-tab-menu" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                
+                <!-- Formulário Adicionar / Editar Item -->
+                <div class="bg-white rounded-3xl border border-slate-200/90 shadow-md p-6">
+                    <h3 id="menu-form-title" class="text-lg font-bold text-slate-900 mb-4">Adicionar Novo Item</h3>
+                    <form id="menu-item-form" class="space-y-4">
+                        <input type="hidden" id="edit-item-id">
+                        
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Nome do Item *</label>
+                            <input type="text" id="item-name" required placeholder="Ex: Coxinha de Frango com Catupiry" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Preço (R$) *</label>
+                                <input type="number" id="item-price" required step="0.01" min="0.50" placeholder="14.50" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Categoria *</label>
+                                <select id="item-category" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white">
+                                    <option value="Salgados">Salgados</option>
+                                    <option value="Lanches">Lanches</option>
+                                    <option value="Bebidas">Bebidas</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Descrição Breve</label>
+                            <input type="text" id="item-desc" placeholder="Ex: Massa artesanal crocante, 120g" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Ícone Ilustrativo</label>
+                                <select id="item-icon" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white">
+                                    <option value="🥐">🥐 Salgado / Folhado</option>
+                                    <option value="🥪">🥪 Sanduíche / Lanche</option>
+                                    <option value="🥤">🥤 Refrigerante / Suco</option>
+                                    <option value="☕">☕ Café / Bebida Quente</option>
+                                    <option value="💧">💧 Água Mineral</option>
+                                    <option value="🍰">🍰 Doce / Sobremesa</option>
+                                    <option value="🥗">🥗 Refeição Leve</option>
+                                </select>
+                            </div>
+                            <div class="flex items-end pb-2">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="item-available" checked class="w-4 h-4 rounded text-slate-900 focus:ring-slate-900">
+                                    <span class="text-sm font-medium text-slate-700">Disponível</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2 pt-2">
+                            <button type="submit" class="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-sm shadow transition">
+                                Salvar Item
+                            </button>
+                            <button type="button" id="cancel-edit-btn" onclick="resetMenuForm()" class="hidden px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm transition">
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Lista de Itens Cadastrados -->
+                <div class="lg:col-span-2 bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
+                    <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+                        <h3 class="text-base font-bold text-slate-900">Itens no Cardápio</h3>
+                        <span id="menu-total-count" class="text-xs font-semibold text-slate-500">0 itens</span>
+                    </div>
+                    <div class="divide-y divide-slate-100" id="master-menu-list">
+                        <!-- Preenchido via JS -->
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Script Principal com Firebase SDK e Lógica da Aplicação -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            signInWithEmailAndPassword, 
+            createUserWithEmailAndPassword, 
+            onAuthStateChanged, 
+            signOut 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            getDoc, 
+            addDoc, 
+            updateDoc, 
+            deleteDoc, 
+            onSnapshot, 
+            collection 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==========================================
+        // 1. CONFIGURAÇÃO E ESTADO GLOBAL
+        // ==========================================
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'hangar-catering-app';
+        let db = null;
+        let auth = null;
+        let isFirebaseReady = false;
+
+        // Estado da Aplicação
+        const state = {
+            currentUser: null, // { uid, email, name, role: 'client' | 'master', isDemo: boolean }
+            authMode: 'login', // 'login' | 'register'
+            menuItems: [],
+            orders: [],
+            cart: [], // [{ id, name, price, qty, icon }]
+            selectedCategory: 'Todos',
+            masterOrderFilter: 'Todos'
+        };
+
+        // Catálogo Padrão Inicial (Caso o banco esteja vazio ou em modo offline)
+        const DEFAULT_MENU = [
+            { id: 'item-1', name: 'Coxinha de Frango com Catupiry', price: 14.00, category: 'Salgados', desc: 'Massa dourada crocante com recheio cremoso (130g)', icon: '🥐', available: true },
+            { id: 'item-2', name: 'Salgado Assado de Peito de Peru', price: 15.50, category: 'Salgados', desc: 'Folhado leve assado na hora com queijo branco', icon: '🥐', available: true },
+            { id: 'item-3', name: 'Sanduíche Natural Executivo', price: 24.00, category: 'Lanches', desc: 'Pão ciabatta, rosbife, rúcula e mostarda Dijon', icon: '🥪', available: true },
+            { id: 'item-4', name: 'Refrigerante Lata (350ml)', price: 8.50, category: 'Bebidas', desc: 'Gelado - Coca-Cola, Guaraná ou Zero', icon: '🥤', available: true },
+            { id: 'item-5', name: 'Café Expresso Gourmet', price: 9.00, category: 'Bebidas', desc: 'Grãos selecionados, acompanha petit-four', icon: '☕', available: true },
+            { id: 'item-6', name: 'Água Mineral Sem Gás (500ml)', price: 6.00, category: 'Bebidas', desc: 'Garrafa premium gelada', icon: '💧', available: true },
+            { id: 'item-7', name: 'Suco Natural de Laranja (300ml)', price: 13.00, category: 'Bebidas', desc: '100% natural, espremido antes do embarque', icon: '🥤', available: true }
+        ];
+
+        // Inicialização Segura do Firebase
+        async function initFirebase() {
+            const statusEl = document.getElementById('connection-status');
+            try {
+                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                    const firebaseConfig = JSON.parse(__firebase_config);
+                    const app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+                    isFirebaseReady = true;
+                    statusEl.textContent = "Conectado ao servidor seguro em tempo real";
+                    statusEl.classList.replace('text-slate-400', 'text-emerald-600');
+                } else {
+                    throw new Error("Configuração Firebase ausente no ambiente.");
+                }
+            } catch (error) {
+                console.warn("Executando em modo local de demonstração:", error.message);
+                isFirebaseReady = false;
+                statusEl.textContent = "Modo Demonstração Local Ativo (Pronto para uso)";
+                statusEl.classList.replace('text-slate-400', 'text-blue-600');
+                state.menuItems = [...DEFAULT_MENU];
+            }
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // 2. SISTEMA DE NOTIFICAÇÃO E CONFIRMAÇÃO
+        // ==========================================
+        window.showToast = function(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const colors = {
+                success: 'bg-emerald-900 text-white border-emerald-700',
+                error: 'bg-rose-900 text-white border-rose-700',
+                info: 'bg-slate-900 text-white border-slate-700'
+            };
+
+            toast.className = `pointer-events-auto px-4 py-3 rounded-xl shadow-lg border text-sm font-medium flex items-center gap-2.5 transform transition-all duration-300 translate-y-2 opacity-0 ${colors[type] || colors.info}`;
+            toast.innerHTML = `<span>${message}</span>`;
+            
+            container.appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        };
+
+        window.showConfirm = function(title, message) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirm-modal');
+                document.getElementById('confirm-title').textContent = title;
+                document.getElementById('confirm-message').textContent = message;
+                
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+
+                const cleanup = (result) => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    resolve(result);
+                };
+
+                document.getElementById('confirm-ok-btn').onclick = () => cleanup(true);
+                document.getElementById('confirm-cancel-btn').onclick = () => cleanup(false);
+            });
+        };
+
+        // ==========================================
+        // 3. AUTENTICAÇÃO E CONTROLE DE ACESSO
+        // ==========================================
+        window.switchAuthTab = function(mode) {
+            state.authMode = mode;
+            const tabLogin = document.getElementById('tab-login');
+            const tabReg = document.getElementById('tab-register');
+            const nameGroup = document.getElementById('register-name-group');
+            const roleGroup = document.getElementById('register-role-group');
+            const submitBtn = document.getElementById('auth-submit-btn');
+
+            if (mode === 'login') {
+                tabLogin.className = "flex-1 py-2 text-sm font-medium rounded-lg bg-white text-slate-900 shadow-sm transition";
+                tabReg.className = "flex-1 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 transition";
+                nameGroup.classList.add('hidden');
+                roleGroup.classList.add('hidden');
+                submitBtn.innerHTML = `<span>Acessar Sistema</span>`;
+            } else {
+                tabReg.className = "flex-1 py-2 text-sm font-medium rounded-lg bg-white text-slate-900 shadow-sm transition";
+                tabLogin.className = "flex-1 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 transition";
+                nameGroup.classList.remove('hidden');
+                roleGroup.classList.remove('hidden');
+                submitBtn.innerHTML = `<span>Cadastrar e Entrar</span>`;
+            }
+        };
+
+        // Login Rápido (Demonstração Imediata)
+        window.loginDemo = async function(role) {
+            try {
+                let uid = 'demo-' + role + '-' + Math.random().toString(36).substring(2, 7);
+                
+                if (isFirebaseReady && auth) {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        const cred = await signInWithCustomToken(auth, __initial_auth_token);
+                        uid = cred.user.uid;
+                    } else {
+                        const cred = await signInAnonymously(auth);
+                        uid = cred.user.uid;
+                    }
+                }
+
+                const userProfile = {
+                    uid: uid,
+                    email: role === 'master' ? 'admin@hangar.com.br' : 'tripulacao@aeronave.com.br',
+                    name: role === 'master' ? 'Coordenação do Hangar' : 'Tripulação Executiva',
+                    role: role,
+                    isDemo: true
+                };
+
+                enterApp(userProfile);
+                showToast(`Acesso liberado como ${role === 'master' ? 'Administração Master' : 'Cliente / Tripulação'}`, 'success');
+            } catch (err) {
+                console.error(err);
+                showToast("Erro ao iniciar sessão de demonstração.", "error");
+            }
+        };
+
+        // Formulário Login/Cadastro Real com E-mail e Senha
+        document.getElementById('auth-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+            const name = document.getElementById('auth-name').value.trim() || email.split('@')[0];
+            const selectedRole = document.getElementById('auth-role').value;
+
+            if (!isFirebaseReady) {
+                // Fallback seguro se estiver sem backend configurado
+                const inferredRole = email.toLowerCase().includes('admin') || email.toLowerCase().includes('master') ? 'master' : (state.authMode === 'register' ? selectedRole : 'client');
+                enterApp({
+                    uid: 'local-' + btoa(email).substring(0, 8),
+                    email,
+                    name,
+                    role: inferredRole,
+                    isDemo: true
+                });
+                showToast("Sessão iniciada em modo local!", "success");
+                return;
+            }
+
+            try {
+                if (state.authMode === 'register') {
+                    const userCred = await createUserWithEmailAndPassword(auth, email, password);
+                    const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', userCred.user.uid);
+                    const profileData = {
+                        uid: userCred.user.uid,
+                        email: email,
+                        name: name,
+                        role: selectedRole,
+                        createdAt: new Date().toISOString()
+                    };
+                    await setDoc(userDocRef, profileData);
+                    enterApp(profileData);
+                    showToast("Conta criada com sucesso!", "success");
+                } else {
+                    const userCred = await signInWithEmailAndPassword(auth, email, password);
+                    const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', userCred.user.uid);
+                    const snap = await getDoc(userDocRef);
+                    
+                    let profileData;
+                    if (snap.exists()) {
+                        profileData = snap.data();
+                    } else {
+                        profileData = {
+                            uid: userCred.user.uid,
+                            email: email,
+                            name: email.split('@')[0],
+                            role: email.includes('admin') ? 'master' : 'client'
+                        };
+                    }
+                    enterApp(profileData);
+                    showToast("Bem-vindo de volta!", "success");
+                }
+            } catch (error) {
+                console.error("Erro auth:", error);
+                let msg = "Falha na autenticação. Verifique e-mail e senha.";
+                if (error.code === 'auth/email-already-in-use') msg = "Este e-mail já está cadastrado.";
+                if (error.code === 'auth/invalid-credential') msg = "E-mail ou senha incorretos.";
+                if (error.code === 'auth/operation-not-allowed') msg = "Use os botões de Acesso Rápido acima para testar.";
+                showToast(msg, "error");
+            }
+        });
+
+        // Entrar na Interface Principal
+        function enterApp(userProfile) {
+            state.currentUser = userProfile;
+            
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+
+            document.getElementById('user-display-name').textContent = userProfile.name;
+            const badge = document.getElementById('user-role-badge');
+            
+            if (userProfile.role === 'master') {
+                badge.textContent = 'Administração Master';
+                badge.className = 'text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-900 text-white inline-block w-fit ml-auto';
+                document.getElementById('header-subtitle').textContent = 'Painel de Controle de Operações & Catering';
+                document.getElementById('master-view').classList.remove('hidden');
+                document.getElementById('client-view').classList.add('hidden');
+            } else {
+                badge.textContent = 'Tripulação / Cliente';
+                badge.className = 'text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 inline-block w-fit ml-auto';
+                document.getElementById('header-subtitle').textContent = 'Solicitação de Serviços de Bordo em Pernoite';
+                document.getElementById('client-view').classList.remove('hidden');
+                document.getElementById('master-view').classList.add('hidden');
+            }
+
+            // Definir horário padrão sugerido (daqui a 1 hora)
+            const now = new Date();
+            now.setHours(now.getHours() + 1);
+            document.getElementById('delivery-time').value = now.toTimeString().substring(0, 5);
+
+            setupRealtimeListeners();
+            lucide.createIcons();
+        }
+
+        window.logoutUser = async function() {
+            if (isFirebaseReady && auth) {
+                try { await signOut(auth); } catch (e) {}
+            }
+            state.currentUser = null;
+            state.cart = [];
+            document.getElementById('main-app').classList.add('hidden');
+            document.getElementById('auth-screen').classList.remove('hidden');
+            showToast("Sessão encerrada com segurança.", "info");
+        };
+
+        // ==========================================
+        // 4. SINCRONIZAÇÃO EM TEMPO REAL (FIRESTORE)
+        // ==========================================
+        let unsubMenu = null;
+        let unsubOrders = null;
+
+        function setupRealtimeListeners() {
+            if (!isFirebaseReady || !db) {
+                // Modo Local
+                if (state.menuItems.length === 0) state.menuItems = [...DEFAULT_MENU];
+                renderAll();
+                return;
+            }
+
+            // 1. Escutar Cardápio Público
+            const menuCol = collection(db, 'artifacts', appId, 'public', 'data', 'menu_items');
+            if (unsubMenu) unsubMenu();
+            unsubMenu = onSnapshot(menuCol, async (snapshot) => {
+                if (snapshot.empty) {
+                    // Popular cardápio inicial se estiver vazio
+                    for (const item of DEFAULT_MENU) {
+                        const { id, ...data } = item;
+                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'menu_items', id), data);
+                    }
+                } else {
+                    state.menuItems = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                    renderAll();
+                }
+            }, (error) => {
+                console.error("Erro ao carregar cardápio:", error);
+            });
+
+            // 2. Escutar Pedidos em Tempo Real
+            const ordersCol = collection(db, 'artifacts', appId, 'public', 'data', 'orders');
+            if (unsubOrders) unsubOrders();
+            unsubOrders = onSnapshot(ordersCol, (snapshot) => {
+                const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                // Ordenar em memória (mais recentes primeiro) - Regra 2 Firestore
+                list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                state.orders = list;
+                renderAll();
+            }, (error) => {
+                console.error("Erro ao carregar pedidos:", error);
+            });
+        }
+
+        function renderAll() {
+            if (!state.currentUser) return;
+            if (state.currentUser.role === 'client') {
+                renderClientCatalog();
+                renderCart();
+                renderClientOrders();
+            } else {
+                renderMasterOrders();
+                renderMasterMenu();
+            }
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // 5. LÓGICA DA ÁREA DO CLIENTE
+        // ==========================================
+        window.switchClientTab = function(tab) {
+            const btnCat = document.getElementById('btn-client-catalog');
+            const btnOrd = document.getElementById('btn-client-orders');
+            const viewCat = document.getElementById('client-tab-catalog');
+            const viewOrd = document.getElementById('client-tab-orders');
+
+            if (tab === 'catalog') {
+                btnCat.className = "px-4 py-2 text-sm font-semibold rounded-lg bg-white text-slate-900 shadow-sm transition";
+                btnOrd.className = "px-4 py-2 text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition flex items-center gap-2";
+                viewCat.classList.remove('hidden');
+                viewOrd.classList.add('hidden');
+            } else {
+                btnOrd.className = "px-4 py-2 text-sm font-semibold rounded-lg bg-white text-slate-900 shadow-sm transition flex items-center gap-2";
+                btnCat.className = "px-4 py-2 text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition";
+                viewOrd.classList.remove('hidden');
+                viewCat.classList.add('hidden');
+            }
+        };
+
+        window.filterCategory = function(category) {
+            state.selectedCategory = category;
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                if (btn.textContent === category) {
+                    btn.className = "cat-btn active px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-white transition";
+                } else {
+                    btn.className = "cat-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition";
+                }
+            });
+            renderClientCatalog();
+        };
+
+        function renderClientCatalog() {
+            const grid = document.getElementById('menu-grid');
+            const filtered = state.menuItems.filter(item => {
+                if (!item.available) return false;
+                if (state.selectedCategory === 'Todos') return true;
+                return item.category === state.selectedCategory;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div class="col-span-full bg-white p-8 rounded-2xl border border-slate-200 text-center text-slate-500 text-sm">Nenhum item disponível nesta categoria no momento.</div>`;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(item => `
+                <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-start justify-between gap-3 mb-3">
+                            <span class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-2xl select-none">
+                                ${item.icon || '🍽️'}
+                            </span>
+                            <span class="text-[11px] font-semibold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full">
+                                ${item.category}
+                            </span>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900 leading-snug">${item.name}</h3>
+                        <p class="text-xs text-slate-500 mt-1 line-clamp-2">${item.desc || 'Preparado sob demanda para seu voo.'}</p>
+                    </div>
+                    
+                    <div class="flex items-center justify-between pt-4 mt-4 border-t border-slate-100">
+                        <span class="text-base font-bold text-slate-900">
+                            ${formatCurrency(item.price)}
+                        </span>
+                        <button onclick="addToCart('${item.id}')" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                            <span>Adicionar</span>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        window.addToCart = function(itemId) {
+            const item = state.menuItems.find(i => i.id === itemId);
+            if (!item) return;
+
+            const existing = state.cart.find(c => c.id === itemId);
+            if (existing) {
+                existing.qty += 1;
+            } else {
+                state.cart.push({
+                    id: item.id,
+                    name: item.name,
+                    price: Number(item.price),
+                    icon: item.icon || '🍽️',
+                    qty: 1
+                });
+            }
+            renderCart();
+            showToast(`${item.name} adicionado.`, 'info');
+        };
+
+        window.updateCartQty = function(itemId, delta) {
+            const idx = state.cart.findIndex(c => c.id === itemId);
+            if (idx === -1) return;
+
+            state.cart[idx].qty += delta;
+            if (state.cart[idx].qty <= 0) {
+                state.cart.splice(idx, 1);
+            }
+            renderCart();
+        };
+
+        function renderCart() {
+            const listEl = document.getElementById('cart-items-list');
+            const totalEl = document.getElementById('cart-total-price');
+            const badgeEl = document.getElementById('cart-items-badge');
+            const mobileCountEl = document.getElementById('mobile-cart-count');
+            const submitBtn = document.getElementById('submit-order-btn');
+
+            const totalQty = state.cart.reduce((sum, item) => sum + item.qty, 0);
+            const totalPrice = state.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+            badgeEl.textContent = `${totalQty} ${totalQty === 1 ? 'item' : 'itens'}`;
+            mobileCountEl.textContent = totalQty;
+            totalEl.textContent = formatCurrency(totalPrice);
+            submitBtn.disabled = state.cart.length === 0;
+
+            if (state.cart.length === 0) {
+                listEl.innerHTML = `<p class="text-sm text-slate-400 text-center py-6">Seu carrinho está vazio.<br>Adicione itens do cardápio ao lado.</p>`;
+                return;
+            }
+
+            listEl.innerHTML = state.cart.map(item => `
+                <div class="flex items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="text-lg">${item.icon}</span>
+                        <div class="truncate">
+                            <p class="text-xs font-bold text-slate-800 truncate">${item.name}</p>
+                            <p class="text-[11px] text-slate-500">${formatCurrency(item.price * item.qty)}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-1.5 py-1">
+                        <button type="button" onclick="updateCartQty('${item.id}', -1)" class="w-5 h-5 flex items-center justify-center text-slate-600 hover:text-slate-900 font-bold">-</button>
+                        <span class="text-xs font-bold w-4 text-center">${item.qty}</span>
+                        <button type="button" onclick="updateCartQty('${item.id}', 1)" class="w-5 h-5 flex items-center justify-center text-slate-600 hover:text-slate-900 font-bold">+</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.scrollToCart = function() {
+            document.getElementById('cart-section').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        // Enviar Pedido
+        document.getElementById('checkout-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (state.cart.length === 0) return;
+
+            const tailNumber = document.getElementById('aircraft-tail').value.trim().toUpperCase();
+            const deliveryTime = document.getElementById('delivery-time').value;
+            const notes = document.getElementById('order-notes').value.trim();
+            const totalAmount = state.cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
+            const newOrder = {
+                userId: state.currentUser.uid,
+                userName: state.currentUser.name,
+                aircraftTail: tailNumber,
+                deliveryTime: deliveryTime,
+                notes: notes,
+                items: [...state.cart],
+                total: totalAmount,
+                status: 'Pendente',
+                createdAt: new Date().toISOString()
+            };
+
+            try {
+                if (isFirebaseReady && db) {
+                    const ordersCol = collection(db, 'artifacts', appId, 'public', 'data', 'orders');
+                    await addDoc(ordersCol, newOrder);
+                } else {
+                    newOrder.id = 'ord-' + Date.now();
+                    state.orders.unshift(newOrder);
+                    renderAll();
+                }
+
+                state.cart = [];
+                document.getElementById('order-notes').value = '';
+                renderCart();
+                showToast(`Pedido para aeronave ${tailNumber} enviado com sucesso!`, 'success');
+                switchClientTab('orders');
+            } catch (err) {
+                console.error("Erro ao enviar pedido:", err);
+                showToast("Erro ao registrar pedido. Tente novamente.", "error");
+            }
+        });
+
+        function renderClientOrders() {
+            const container = document.getElementById('client-orders-list');
+            const countBadge = document.getElementById('client-active-orders-count');
+
+            // Filtrar pedidos do usuário atual (ou todos se for demo)
+            const myOrders = state.orders.filter(o => o.userId === state.currentUser.uid);
+            const activeCount = myOrders.filter(o => o.status !== 'Entregue na Aeronave').length;
+            countBadge.textContent = activeCount;
+
+            if (myOrders.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full bg-white p-10 rounded-3xl border border-slate-200 text-center">
+                        <p class="text-slate-500 text-sm">Você ainda não realizou nenhum pedido de comissaria.</p>
+                        <button onclick="switchClientTab('catalog')" class="mt-4 px-5 py-2.5 bg-slate-900 text-white text-xs font-semibold rounded-xl">Explorar Cardápio</button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = myOrders.map(order => {
+                const statusStyle = getStatusBadgeStyle(order.status);
+                return `
+                    <div class="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between gap-2 pb-4 border-b border-slate-100">
+                                <div>
+                                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Aeronave</span>
+                                    <h3 class="text-lg font-bold text-slate-900">${order.aircraftTail}</h3>
+                                </div>
+                                <span class="px-3 py-1.5 rounded-full text-xs font-bold border ${statusStyle}">
+                                    ${order.status}
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 my-3 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl">
+                                <div>
+                                    <span class="text-slate-400 block">Entrega Programada:</span>
+                                    <strong class="text-slate-800">${order.deliveryTime}</strong>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block">Solicitado às:</span>
+                                    <strong class="text-slate-800">${new Date(order.createdAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</strong>
+                                </div>
+                            </div>
+
+                            <div class="space-y-1.5 my-4">
+                                ${order.items.map(i => `
+                                    <div class="flex justify-between text-xs">
+                                        <span class="text-slate-700 font-medium">${i.qty}x ${i.name}</span>
+                                        <span class="text-slate-500">${formatCurrency(i.price * i.qty)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+                            <span class="text-xs text-slate-500">${order.notes ? `Obs: ${order.notes}` : 'Sem observações'}</span>
+                            <span class="text-base font-bold text-slate-900">${formatCurrency(order.total)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ==========================================
+        // 6. LÓGICA DO PAINEL MASTER (ADMINISTRAÇÃO)
+        // ==========================================
+        window.switchMasterTab = function(tab) {
+            const btnOrd = document.getElementById('btn-master-orders');
+            const btnMenu = document.getElementById('btn-master-menu');
+            const viewOrd = document.getElementById('master-tab-orders');
+            const viewMenu = document.getElementById('master-tab-menu');
+            const filters = document.getElementById('master-order-filters');
+
+            if (tab === 'orders') {
+                btnOrd.className = "px-4 py-2 text-sm font-semibold rounded-lg bg-white text-slate-900 shadow-sm transition";
+                btnMenu.className = "px-4 py-2 text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition";
+                viewOrd.classList.remove('hidden');
+                viewMenu.classList.add('hidden');
+                filters.classList.remove('hidden');
+            } else {
+                btnMenu.className = "px-4 py-2 text-sm font-semibold rounded-lg bg-white text-slate-900 shadow-sm transition";
+                btnOrd.className = "px-4 py-2 text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition";
+                viewMenu.classList.remove('hidden');
+                viewOrd.classList.add('hidden');
+                filters.classList.add('hidden');
+            }
+        };
+
+        window.filterMasterOrders = function(statusFilter) {
+            state.masterOrderFilter = statusFilter;
+            document.querySelectorAll('.m-filter-btn').forEach(btn => {
+                if (btn.textContent.includes(statusFilter) || (statusFilter === 'Todos' && btn.textContent === 'Todos') || (statusFilter === 'Pendente' && btn.textContent === 'Pendentes') || (statusFilter === 'Entregue na Aeronave' && btn.textContent === 'Entregues')) {
+                    btn.className = "m-filter-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-white transition";
+                } else {
+                    btn.className = "m-filter-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition";
+                }
+            });
+            renderMasterOrders();
+        };
+
+        function renderMasterOrders() {
+            // Atualizar estatísticas
+            const pending = state.orders.filter(o => o.status === 'Pendente').length;
+            const preparing = state.orders.filter(o => o.status === 'Em Preparo').length;
+            const delivered = state.orders.filter(o => o.status === 'Entregue na Aeronave').length;
+            const revenue = state.orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+
+            document.getElementById('stat-pending').textContent = pending;
+            document.getElementById('stat-preparing').textContent = preparing;
+            document.getElementById('stat-delivered').textContent = delivered;
+            document.getElementById('stat-revenue').textContent = formatCurrency(revenue);
+
+            const container = document.getElementById('master-tab-orders');
+            const filtered = state.orders.filter(o => {
+                if (state.masterOrderFilter === 'Todos') return true;
+                return o.status === state.masterOrderFilter;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="col-span-full bg-white p-10 rounded-3xl border border-slate-200 text-center text-slate-500 text-sm">Nenhum pedido encontrado neste filtro.</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(order => {
+                const statusStyle = getStatusBadgeStyle(order.status);
+                return `
+                    <div class="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-start justify-between gap-2 pb-4 border-b border-slate-100">
+                                <div>
+                                    <span class="inline-block px-2.5 py-0.5 bg-slate-900 text-white text-xs font-bold rounded-md tracking-wider mb-1">
+                                        ${order.aircraftTail}
+                                    </span>
+                                    <p class="text-xs text-slate-500">Solicitante: <strong class="text-slate-700">${order.userName}</strong></p>
+                                </div>
+                                <span class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${statusStyle}">
+                                    ${order.status}
+                                </span>
+                            </div>
+
+                            <div class="flex items-center justify-between my-3 px-3 py-2 bg-slate-50 rounded-xl text-xs">
+                                <span class="text-slate-500">Entregar às: <strong class="text-slate-900 text-sm">${order.deliveryTime}</strong></span>
+                                <span class="font-bold text-slate-900">${formatCurrency(order.total)}</span>
+                            </div>
+
+                            ${order.notes ? `<div class="mb-3 px-3 py-2 bg-amber-50 border border-amber-200/70 rounded-xl text-xs text-amber-900"><strong>Obs:</strong> ${order.notes}</div>` : ''}
+
+                            <div class="space-y-1.5 my-3 max-h-40 overflow-y-auto">
+                                ${order.items.map(i => `
+                                    <div class="flex justify-between text-xs py-1 border-b border-slate-50">
+                                        <span class="font-semibold text-slate-800">${i.qty}x ${i.name}</span>
+                                        <span class="text-slate-500">${formatCurrency(i.price * i.qty)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Ações de Atualização de Status -->
+                        <div class="pt-4 border-t border-slate-100 space-y-2">
+                            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Atualizar Status:</p>
+                            <div class="grid grid-cols-3 gap-1.5">
+                                <button onclick="updateOrderStatus('${order.id}', 'Pendente')" class="py-1.5 px-2 rounded-lg text-[11px] font-semibold border transition ${order.status === 'Pendente' ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}">
+                                    Pendente
+                                </button>
+                                <button onclick="updateOrderStatus('${order.id}', 'Em Preparo')" class="py-1.5 px-2 rounded-lg text-[11px] font-semibold border transition ${order.status === 'Em Preparo' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}">
+                                    Preparando
+                                </button>
+                                <button onclick="updateOrderStatus('${order.id}', 'Entregue na Aeronave')" class="py-1.5 px-2 rounded-lg text-[11px] font-semibold border transition ${order.status === 'Entregue na Aeronave' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}">
+                                    Entregue
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.updateOrderStatus = async function(orderId, newStatus) {
+            try {
+                if (isFirebaseReady && db) {
+                    const orderRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderId);
+                    await updateDoc(orderRef, { status: newStatus });
+                } else {
+                    const order = state.orders.find(o => o.id === orderId);
+                    if (order) order.status = newStatus;
+                    renderAll();
+                }
+                showToast(`Status alterado para: ${newStatus}`, 'success');
+            } catch (err) {
+                console.error(err);
+                showToast("Erro ao atualizar status.", "error");
+            }
+        };
+
+        // Gerenciamento do Cardápio (Master)
+        function renderMasterMenu() {
+            const listEl = document.getElementById('master-menu-list');
+            document.getElementById('menu-total-count').textContent = `${state.menuItems.length} itens`;
+
+            listEl.innerHTML = state.menuItems.map(item => `
+                <div class="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/70 transition">
+                    <div class="flex items-center gap-3.5">
+                        <span class="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center text-xl shrink-0">
+                            ${item.icon || '🍽️'}
+                        </span>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h4 class="text-sm font-bold text-slate-900">${item.name}</h4>
+                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full ${item.available ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                                    ${item.available ? 'Ativo' : 'Indisponível'}
+                                </span>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-0.5">${item.category} • <strong class="text-slate-800">${formatCurrency(item.price)}</strong></p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 self-end sm:self-center">
+                        <button onclick="editMenuItem('${item.id}')" class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg transition">
+                            Editar
+                        </button>
+                        <button onclick="deleteMenuItem('${item.id}')" class="px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition">
+                            Remover
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('menu-item-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const editId = document.getElementById('edit-item-id').value;
+            const itemData = {
+                name: document.getElementById('item-name').value.trim(),
+                price: parseFloat(document.getElementById('item-price').value),
+                category: document.getElementById('item-category').value,
+                desc: document.getElementById('item-desc').value.trim(),
+                icon: document.getElementById('item-icon').value,
+                available: document.getElementById('item-available').checked
+            };
+
+            try {
+                if (isFirebaseReady && db) {
+                    if (editId) {
+                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'menu_items', editId), itemData);
+                        showToast("Item atualizado no cardápio!", "success");
+                    } else {
+                        const menuCol = collection(db, 'artifacts', appId, 'public', 'data', 'menu_items');
+                        await addDoc(menuCol, itemData);
+                        showToast("Novo item adicionado ao cardápio!", "success");
+                    }
+                } else {
+                    if (editId) {
+                        const idx = state.menuItems.findIndex(i => i.id === editId);
+                        if (idx !== -1) state.menuItems[idx] = { id: editId, ...itemData };
+                    } else {
+                        state.menuItems.push({ id: 'item-' + Date.now(), ...itemData });
+                    }
+                    renderAll();
+                    showToast("Cardápio atualizado!", "success");
+                }
+                resetMenuForm();
+            } catch (err) {
+                console.error(err);
+                showToast("Erro ao salvar item do cardápio.", "error");
+            }
+        });
+
+        window.editMenuItem = function(itemId) {
+            const item = state.menuItems.find(i => i.id === itemId);
+            if (!item) return;
+
+            document.getElementById('menu-form-title').textContent = "Editar Item do Cardápio";
+            document.getElementById('edit-item-id').value = item.id;
+            document.getElementById('item-name').value = item.name;
+            document.getElementById('item-price').value = item.price;
+            document.getElementById('item-category').value = item.category;
+            document.getElementById('item-desc').value = item.desc || '';
+            document.getElementById('item-icon').value = item.icon || '🥐';
+            document.getElementById('item-available').checked = item.available;
+            document.getElementById('cancel-edit-btn').classList.remove('hidden');
+        };
+
+        window.resetMenuForm = function() {
+            document.getElementById('menu-form-title').textContent = "Adicionar Novo Item";
+            document.getElementById('menu-item-form').reset();
+            document.getElementById('edit-item-id').value = '';
+            document.getElementById('item-available').checked = true;
+            document.getElementById('cancel-edit-btn').classList.add('hidden');
+        };
+
+        window.deleteMenuItem = async function(itemId) {
+            const confirmed = await showConfirm("Remover Item", "Deseja realmente excluir este item do cardápio?");
+            if (!confirmed) return;
+
+            try {
+                if (isFirebaseReady && db) {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'menu_items', itemId));
+                } else {
+                    state.menuItems = state.menuItems.filter(i => i.id !== itemId);
+                    renderAll();
+                }
+                showToast("Item removido com sucesso.", "info");
+            } catch (err) {
+                console.error(err);
+                showToast("Erro ao remover item.", "error");
+            }
+        };
+
+        // ==========================================
+        // 7. UTILITÁRIOS
+        // ==========================================
+        function formatCurrency(val) {
+            return Number(val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function getStatusBadgeStyle(status) {
+            if (status === 'Pendente') return 'bg-amber-50 text-amber-700 border-amber-200';
+            if (status === 'Em Preparo') return 'bg-blue-50 text-blue-700 border-blue-200';
+            return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        }
+
+        // Inicializar ao carregar janela
+        window.addEventListener('DOMContentLoaded', initFirebase);
+    </script>
+</body>
+</html>

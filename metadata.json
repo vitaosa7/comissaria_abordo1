@@ -1,0 +1,8 @@
+{
+  "name": "Comissaria Hangar — Pedidos via WhatsApp",
+  "description": "Sistema de catering e pedidos de serviços de bordo para aeronaves em hangar com envio direto via WhatsApp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
